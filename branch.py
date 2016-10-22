@@ -12,8 +12,9 @@ import re
 
 
 class Branch:
-    def __init__(self, name, parent=None):
+    def __init__(self, name, description='', parent=None):
         self._name = name
+        self._description = description
         self._parent = parent
         self._children = {}
 
@@ -23,14 +24,18 @@ class Branch:
         return self._name == other._name
 
     def __str__(self):
-        return self._name
-
-    def __repr__(self):
-        return self._name
+        description = self._description
+        if len(description) > 40:
+            description = description[:37] + '...'
+        return '[{0}] {1}'.format(self._name, description)
 
     @property
     def name(self):
         return self._name
+
+    @property
+    def description(self):
+        return self._description
 
     @property
     def children(self):
@@ -52,20 +57,28 @@ class Branch:
         return self._parent.is_parent(branch)
 
 
+class GitException(Exception):
+    pass
+
+
 class Git:
     def show_branch(self):
-        return subprocess.check_output([
-            'git',
-            'show-branch',
-            '--no-color',
-            '--topo-order'
-        ], universal_newlines=True)
+        try:
+            return subprocess.check_output([
+                'git',
+                'show-branch',
+                '--no-color',
+                '--topo-order'
+            ], universal_newlines=True)
+        except subprocess.CalledProcessError as e:
+            raise GitException(e.output)
 
 
 class Program:
     def __init__(self):
         self._git = Git()
         self._tree = {}
+        self._current_branch = 'master'
         self._init_tree()
 
     def run(self):
@@ -79,33 +92,36 @@ class Program:
         return self._find_root(branch.parent)
 
     def _print_tree(self, branch, offset='', prefix="->"):
-        print("{0}{1} [{2}]".format(offset, prefix, branch.name))
+        print("{0}{1} {2}".format(offset, prefix, str(branch)))
         counter = len(branch.children)
         for _, child in branch.children.items():
-            new_offset = offset.replace("'", ' ').replace('+', '|')
+            new_offset = offset.replace('`', ' ').replace('+', '|')
             if counter == 1:
-                new_offset += "   '"
+                new_offset += '   `'
             else:
                 new_offset += '   +'
             self._print_tree(child, offset=new_offset)
             counter -= 1
 
     def _init_tree(self):
-        parts = re.split('-+\n', self._git.show_branch())
-        branches = self._build_branches(parts[0])
+        try:
+            parts = re.split('-+\n', self._git.show_branch())
+            branches = self._build_branches(parts[0])
 
-        self._tree = {branch.name: branch for branch in branches}
-        if len(parts) > 1:
-            self._calculate_tree(branches, parts[1])
+            self._tree = {branch.name: branch for branch in branches}
+            if len(parts) > 1:
+                self._calculate_tree(branches, parts[1])
+        except GitException as e:
+            print(e.value)
 
     def _build_branches(self, output):
         result = []
         for line in output.split('\n'):
-            match = re.match('^.*?\\[(.+?)\\]', line)
+            match = re.match('^.*?\\[(.+?)\\]\\s(.+)', line)
             if not match:
                 continue
-            name = match.group(1)
-            result.append(Branch(name))
+            name, description = match.group(1, 2)
+            result.append(Branch(name, description=description))
         return result
 
     def _calculate_tree(self, branches, output):

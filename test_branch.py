@@ -30,14 +30,29 @@ class ProgramTest(unittest.TestCase):
             '    ! [branch4] Commit 4'
         ]))
 
-        self.assertEqual(result, [
-            Branch('master'),
-            Branch('branch1'),
-            Branch('branch3'),
-            Branch('branch2'),
-            Branch('branch4')
-        ])
+        self.assertEqual(result[0].name, 'master')
+        self.assertEqual(result[0].description, 'Initial commit')
 
+        self.assertEqual(result[1].name, 'branch1')
+        self.assertEqual(result[1].description, 'Commit 1')
+
+        self.assertEqual(result[2].name, 'branch3')
+        self.assertEqual(result[2].description, 'Commit 2')
+
+        self.assertEqual(result[3].name, 'branch2')
+        self.assertEqual(result[3].description, 'Commit 3')
+
+        self.assertEqual(result[4].name, 'branch4')
+        self.assertEqual(result[4].description, 'Commit 4')
+
+        result = self.program._build_branches('[master] Initial commit')
+        self.assertEqual(result, [Branch('master')])
+
+    def test_build_branches__when_no_branches_exist(self):
+        result = self.program._build_branches('')
+        self.assertEqual([], result)
+
+    def test_build_branches__when_single_branch_exist(self):
         result = self.program._build_branches('[master] Initial commit')
         self.assertEqual(result, [Branch('master')])
 
