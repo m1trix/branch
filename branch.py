@@ -115,10 +115,11 @@ class Program:
         self._init_tree()
 
     def run(self):
-        parser = argparse.ArgumentParser()
-        parser.add_argument('action', choices=['pull'])
+        parser = argparse.ArgumentParser(allow_abbrev=False)
+        parser.add_argument('-p', '--pull', action='store_true',
+                            help='pulls from the remote repository')
         args = parser.parse_args()
-        if 'pull' == args.action:
+        if args.pull:
             self._pull_remote_repository()
         self._print_tree(self._find_root(), prefix='  ')
 
