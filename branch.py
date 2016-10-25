@@ -4,10 +4,12 @@
 #  It's main purpouse is to rebase all local branches
 #  over the master branch after a successful pull.
 #
-#  Version: 0.0.1
+#  Version: 0.0.2
 #
 
+import argparse
 import subprocess
+import sys
 import re
 
 
@@ -61,7 +63,38 @@ class GitException(Exception):
     pass
 
 
+class GitStash:
+    def __enter__(self):
+        print('Stashing any existing changes ...')
+        output = subprocess.check_output([
+            'git',
+            'stash'
+        ], universal_newlines=True)
+        self._stashed = (output.strip() != 'No local changes to save')
+        if not self._stashed:
+            print('Nothing to stash')
+        print('====================\n')
+
+    def __exit__(self, type, value, tb):
+        print('\n===================')
+        if not self._stashed:
+            print('Nothing to unstash. Skipping')
+            return
+        try:
+            print('Unstashing ...')
+            subprocess.check_output(['git', 'stash', 'pop'])
+        except subprocess.CalledProcessError:
+            exit('Failed to pop the stash. Do it manually!')
+
+
 class Git:
+    def stash(self):
+        return GitStash()
+
+    def pull_rebase(self):
+        if 0 != subprocess.call(['git', 'pull', '--rebase']):
+            raise GitException()
+
     def show_branch(self):
         try:
             return subprocess.check_output([
@@ -82,7 +115,20 @@ class Program:
         self._init_tree()
 
     def run(self):
+        parser = argparse.ArgumentParser()
+        parser.add_argument('action', choices=['pull'])
+        args = parser.parse_args()
+        if 'pull' == args.action:
+            self._pull_remote_repository()
         self._print_tree(self._find_root(), prefix='  ')
+
+    def _pull_remote_repository(self):
+        with self._git.stash():
+            try:
+                print('Pulling from the remote repository ...')
+                self._git.pull_rebase()
+            except GitException:
+                exit('Failed to pull from remote repository')
 
     def _find_root(self, branch=None):
         if not branch:
@@ -112,7 +158,7 @@ class Program:
             if len(parts) > 1:
                 self._calculate_tree(branches, parts[1])
         except GitException as e:
-            print(e.value)
+            exit('Failed to calculate branch tree: ' + e.value)
 
     def _build_branches(self, output):
         result = []
@@ -144,6 +190,7 @@ class Program:
             if not branch.parent:
                 continue
             branch.parent.children[branch.name] = branch
+
 #
 #   M A I N
 #
