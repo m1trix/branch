@@ -17,34 +17,36 @@ class Engine:
     def run(self):
         try:
             command, options = self._controller.select(self._build_commands())
-            self._tree = TreeBuilder(self._git) \
-                .include_commits(options.get('commits', False)) \
-                .build()
+            initial_tree = self._detect_tree(options.get('commits', False))
             if command is None or command == 'full':
-                self._display.render(TreeRenderer().render_tree(self._tree))
+                self._display.render(TreeRenderer().render_tree(initial_tree))
                 return
             if command == 'pull':
-                self._display.render(TreeRenderer().render_tree(self._tree))
-                self._pull_remotes()
+                self._display.render(TreeRenderer().render_tree(initial_tree))
+                self._pull_remotes(initial_tree)
                 return
         except(KeyboardInterrupt):
             return
 
-    def _pull_remotes(self):
-        self._display.message('Checking out to {}', self._tree.root.name)
-        self._git.checkout(self._tree.root.name)
+    def _detect_tree(self, include_commits):
+        return TreeBuilder(self._git).include_commits(include_commits).build()
 
-        self._display.message('Pulling remote {} ...', self._tree.root.name)
+    def _pull_remotes(self, tree):
+        self._display.message('Checking out to {}', tree.root.name)
+        self._git.checkout(tree.root.name)
+
+        self._display.message('Pulling remote {} ...', tree.root.name)
         self._git.pull()
 
-        self._rebase_children(self._tree.root)
+        self._rebase_children(tree.root)
 
     def _rebase_children(self, root):
         self._display.message('Rebasing {} child branches...', root.name)
         for branch in root.children.values():
-            self._display.message(
-                '  Rebasing {0} over {1}...', branch.name, root.name)
-            self._git.rebase(branch.name, root.name)
+            if branch.is_remote is False:
+                self._display.message(
+                    '  Rebasing {0} over {1}...', branch.name, root.name)
+                self._git.rebase(branch.name, root.name)
             self._rebase_children(branch)
 
     def _build_commands(self):

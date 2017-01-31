@@ -4,13 +4,28 @@ class Branch:
         self._parent = parent
         self._children = {}
         self._commits = commits
+        self._is_remote = False
 
     def __eq__(self, other):
         return isinstance(other, Branch) and (self._name == other._name)
 
+    def __str__(self):
+        return self._name
+
+    def __repr__(self):
+        return self._name
+
     @property
     def name(self):
         return self._name
+
+    @property
+    def is_remote(self):
+        return self._is_remote
+
+    @is_remote.setter
+    def is_remote(self, is_remote):
+        self._is_remote = is_remote
 
     @property
     def children(self):

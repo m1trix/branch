@@ -7,23 +7,24 @@ BRANCH_KNOT = '^([\\s*+-]+?)\\s\\[(.+?)(?:[~^]\\d*)*\\]'
 
 
 class Tree:
-    def __init__(self, branches):
+    def __init__(self, branches, remotes):
         self._branches = branches
-        self._root = None
+        self._remotes = [
+            branches[name] for name in remotes if name in branches
+        ]
+        for branch in self._remotes:
+            branch.is_remote = True
 
     def __getitem__(self, name):
         return self._branches[name]
 
     @property
-    def root(self):
-        if self._root is None:
-            self._root = self._find_root(self._branches['master'])
-        return self._root
+    def remotes(self):
+        return self._remotes
 
-    def _find_root(self, branch):
-        if not branch.has_parent:
-            return branch
-        return self._find_root(branch.parent)
+    @property
+    def root(self):
+        return self._branches['master']
 
 
 class TreeBuilder:
@@ -36,21 +37,20 @@ class TreeBuilder:
         return self
 
     def build(self):
-        remote_branches = [
-            row.replace('*', ' ').strip()
-            for row
-            in self._git.remote_branches().split('\n')
-        ]
-
         parts = re.split('-+\n', self._git.show_branch())
         branches = self._build_branches(parts[0])
+        remotes = [
+            row.replace('*', ' ').replace('origin/', '').strip()
+            for row in self._git.remote_branches().split('\n')
+        ]
 
-        tree = Tree({branch.name: branch for branch in branches})
+        tree = Tree({branch.name: branch for branch in branches}, remotes)
         len(parts) > 1 and self._build_tree(tree, branches, parts[1])
 
         if self._include_commits:
             for branch in branches:
                 self._build_commits(branch)
+
         return tree
 
     def _build_branches(self, raw_data):
@@ -59,9 +59,17 @@ class TreeBuilder:
         return [Branch(matcher.group(1)) for matcher in matchers if matcher]
 
     def _build_tree(self, tree, branches, raw_data):
+        knots = self._parse_knots(raw_data)
+        self._calculate_parents(knots, tree, branches)
+        self._ensure_master_is_root(tree)
+        self._fill_in_child_branches(branches)
+
+    def _parse_knots(self, raw_data):
         lines = raw_data.split('\n')
         matchers = [re.match(BRANCH_KNOT, line) for line in lines]
-        knots = [matcher.group(1, 2) for matcher in matchers if matcher]
+        return [matcher.group(1, 2) for matcher in matchers if matcher]
+
+    def _calculate_parents(self, knots, tree, branches):
         for knot, name in knots:
             for i, c in enumerate(knot):
                 if ' ' == c:
@@ -72,9 +80,14 @@ class TreeBuilder:
                     branches[i].parent = tree[name]
                 if branches[i].parent.is_parent_of(tree[name]):
                     branches[i].parent = tree[name]
-                if branches[i].name == 'master' and branches[i].parent is not None:
-                    branches[i].parent.parent = branches[i]
-                    branches[i].parent = None
+
+    def _ensure_master_is_root(self, tree):
+        master = tree['master']
+        while master.has_parent:
+            parent = master.parent
+            master.parent, parent.parent = parent.parent, master
+
+    def _fill_in_child_branches(self, branches):
         for branch in branches:
             if branch.has_parent:
                 branch.parent.children[branch.name] = branch
