@@ -72,6 +72,9 @@ class TreeBuilder:
                     branches[i].parent = tree[name]
                 if branches[i].parent.is_parent_of(tree[name]):
                     branches[i].parent = tree[name]
+                if branches[i].name == 'master' and branches[i].parent is not None:
+                    branches[i].parent.parent = branches[i]
+                    branches[i].parent = None
         for branch in branches:
             if branch.has_parent:
                 branch.parent.children[branch.name] = branch

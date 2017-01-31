@@ -2,9 +2,26 @@ import subprocess
 import sys
 
 
+class GitException(Exception):
+    pass
+
+
 class Git:
     def __init__(self):
         self._encoding = sys.stdout.encoding
+
+    def pull(self):
+        if subprocess.call(['git', 'pull', '--rebase']) != 0:
+            raise GitException()
+
+    def checkout(self, branch):
+        if subprocess.call(['git', 'checkout', branch]) != 0:
+            raise GitException()
+
+    def rebase(self, branch, over):
+        self.checkout(branch)
+        if subprocess.call(['git', 'rebase', over]) != 0:
+            raise GitException()
 
     def remote_branches(self):
         return subprocess.check_output([
