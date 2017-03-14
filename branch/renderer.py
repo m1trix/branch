@@ -21,4 +21,4 @@ class TreeRenderer:
     def _render_commit(self, commit, offset):
         commit_offset = offset.replace('.', '|').replace('+', '|')
         return TreeRenderer.COMMIT_FORMAT.format(
-            commit_offset, commit.hash[::6], commit.message)
+            commit_offset, commit.hash[::7], commit.message)
