@@ -1,5 +1,7 @@
-import subprocess
 import sys
+
+from subprocess import PIPE
+from subprocess import run
 
 
 class GitException(Exception):
@@ -11,32 +13,19 @@ class Git:
         self._encoding = sys.stdout.encoding
 
     def pull(self):
-        if subprocess.call(['git', 'pull', '--rebase']) != 0:
-            raise GitException()
+        self._call('git', 'pull', '--rebase')
 
     def checkout(self, branch):
-        if subprocess.call(['git', 'checkout', branch]) != 0:
-            raise GitException()
+        self._call('git', 'checkout', branch)
 
     def rebase(self, branch, over):
-        self.checkout(branch)
-        if subprocess.call(['git', 'rebase', over]) != 0:
-            raise GitException()
+        self._call('git', 'rebase', over, branch)
 
     def remote_branches(self):
-        return subprocess.check_output([
-            'git',
-            'branch',
-            '--remote'
-        ]).decode(self._encoding)
+        return self._call('git', 'branch', '--remote')
 
     def show_branch(self):
-        return subprocess.check_output([
-            'git',
-            'show-branch',
-            '--no-color',
-            '--topo-order'
-        ]).decode(self._encoding)
+        return self._call('git', 'show-branch', '--no-color', '--topo-order')
 
     def log(self, fr=None, to=None):
         command = ['git', 'log', '--pretty=oneline']
@@ -44,4 +33,9 @@ class Git:
             command.append(fr)
         if to is not None:
             command[-1] += '..' + to
-        return subprocess.check_output(command).decode(self._encoding)
+        return self._call(*command)
+
+    def _call(self, *command):
+        process = run(command, stdout=PIPE)
+        process.check_returncode()
+        return process.stdout.decode(self._encoding)

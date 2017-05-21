@@ -94,9 +94,9 @@ class TreeBuilder:
 
     def _build_commits(self, branch):
         if not branch.has_parent:
-            output = self._git.log(fr=branch.name)
+            output = self._git.log(branch.name)
         else:
-            output = self._git.log(fr=branch.parent.name, to=branch.name)
+            output = self._git.log(branch.parent.name, branch.name)
         lines = [line for line in output.strip().split('\n') if line != '']
         commits = [line.split(maxsplit=1) for line in lines]
         branch.commits = [Commit(hash, message) for hash, message in commits]
