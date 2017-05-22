@@ -8,6 +8,16 @@ from .tree import TreeBuilder
 from .renderer import TreeRenderer
 
 
+PROGRAM_HELP = 'Used to view and manage local git branches.'
+PULL_COMMAND_HELP = 'Pulls all remote branches and rebases local ones over' + \
+    ' their respective parrents.'
+WIPE_COMMAND_HELP = 'Deletes all local branches that are already merged' + \
+    ' the master branch.'
+
+COMMITS_OPTION_HELP = 'Displays commits in the branch tree.'
+WIPE_OPTION_HELP = 'Invokes the wipe command after the pull finishes.'
+
+
 class Engine:
     def __init__(self, git, display, controller):
         self._git = git
@@ -18,12 +28,17 @@ class Engine:
         try:
             command, options = self._controller.select(self._build_commands())
             initial_tree = self._detect_tree(options.get('commits', False))
-            if command is None or command == 'full':
+            if command is None:
                 self._display.render(TreeRenderer().render_tree(initial_tree))
                 return
             if command == 'pull':
                 self._display.render(TreeRenderer().render_tree(initial_tree))
                 self._pull_remotes(initial_tree)
+                if 'wipe' in options:
+                    self._wipe()
+                return
+            if command == 'wipe':
+                self._wipe()
                 return
         except(KeyboardInterrupt):
             return
@@ -41,21 +56,34 @@ class Engine:
         self._rebase_children(tree.root)
 
     def _rebase_children(self, root):
-        self._display.message('Rebasing {} child branches...', root.name)
+        self._display.message("Rebasing any '{}' child branches...", root.name)
         for branch in root.children.values():
             if branch.is_remote is False:
                 self._display.message(
-                    '  Rebasing {0} over {1}...', branch.name, root.name)
+                    "  Rebasing '{0}' over '{1}' ...", branch.name, root.name)
                 self._git.rebase(branch.name, root.name)
             self._rebase_children(branch)
 
+    def _wipe(self):
+        self._display.message('Detecting merged branches ...')
+        branches = self._git.merged_branches()
+
+        if len(branches) is 0:
+            self._display.message('No branches detected.')
+            return
+
+        self._display.message('Detected branches: {}.', ', '.join(branches))
+        self._display.message('Deleting branches ...')
+        self._git.delete_branches(branches)
+        self._display.message('Success.')
+
     def _build_commands(self):
         return [
-            Command(None, 'manages local git branches', [
-                FlagOption('commits', 'c', 'displays commit information')
+            Command(None, PROGRAM_HELP, [
+                FlagOption('commits', 'c', COMMITS_OPTION_HELP)
             ]),
-            Command('full', 'displays the whole branch tree', [
-                FlagOption('commits', 'c', 'displays commit information')
+            Command('pull', PULL_COMMAND_HELP, [
+                FlagOption('wipe', 'w', WIPE_OPTION_HELP)
             ]),
-            Command('pull', 'pulls all remote branches and rebases local ones')
+            Command('wipe', WIPE_COMMAND_HELP)
         ]

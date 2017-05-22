@@ -27,6 +27,15 @@ class Git:
     def show_branch(self):
         return self._call('git', 'show-branch', '--no-color', '--topo-order')
 
+    def merged_branches(self):
+        rows = self._call('git', 'branch', '--merged', 'master') \
+            .strip().split('\n')
+        return [row.strip() for row in rows if row.find('master') < 0]
+
+    def delete_branches(self, branches):
+        self.checkout('master')
+        return self._call('git', 'branch', '--delete', *branches)
+
     def log(self, fr=None, to=None):
         command = ['git', 'log', '--pretty=oneline']
         if fr is not None:
