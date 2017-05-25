@@ -34,7 +34,7 @@ class Engine:
             if command == 'pull':
                 self._display.render(TreeRenderer().render_tree(initial_tree))
                 self._pull_remotes(initial_tree)
-                if 'wipe' in options:
+                if options.get('wipe', False):
                     self._wipe()
                 return
             if command == 'wipe':

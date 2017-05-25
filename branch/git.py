@@ -30,7 +30,12 @@ class Git:
     def merged_branches(self):
         rows = self._call('git', 'branch', '--merged', 'master') \
             .strip().split('\n')
-        return [row.strip() for row in rows if row.find('master') < 0]
+        return [
+            row.replace('*', '').strip()
+            for row
+            in rows
+            if row.find('master') < 0
+        ]
 
     def delete_branches(self, branches):
         self.checkout('master')
