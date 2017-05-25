@@ -5,13 +5,15 @@ from .commit import Commit
 
 BRANCH_KNOT = '^([\\s*+-]+?)\\s\\[(.+?)(?:[~^]\\d*)*\\]'
 INITIAL_STATUS = [False, False, False]
+
 STAGED_FILES = 0
 UNSTAGED_FILES = 1
 UNTRACKED_FILES = 2
 
 
 class Tree:
-    def __init__(self, branches, remotes):
+    def __init__(self, active, branches, remotes):
+        self._active = active
         self._branches = branches
         self._remotes = [
             branches[name] for name in remotes if name in branches
@@ -29,6 +31,10 @@ class Tree:
     @property
     def root(self):
         return self._branches['master']
+
+    @property
+    def active(self):
+        return self._branches[self._active]
 
 
 class TreeBuilder:
@@ -48,7 +54,9 @@ class TreeBuilder:
             for row in self._git.remote_branches().split('\n')
         ]
 
-        tree = Tree({branch.name: branch for branch in branches}, remotes)
+        current = self._git.branch()
+        tree = Tree(
+            current, {branch.name: branch for branch in branches}, remotes)
         len(parts) > 1 and self._build_tree(tree, branches, parts[1])
 
         if self._include_commits:
@@ -110,8 +118,7 @@ class TreeBuilder:
         output = self._git.status()
         status = INITIAL_STATUS[:]
         for row in output:
-            print(row)
-            if row.strip() == '' or row.startswith('##'):
+            if row.strip() == '':
                 continue
             if row.startswith('??'):
                 status[UNTRACKED_FILES] = True
@@ -120,8 +127,4 @@ class TreeBuilder:
                 status[UNSTAGED_FILES] = True
             if row[0] != ' ':
                 status[STAGED_FILES] = True
-
-        branch = 'master'
-        if output[0].startswith('## '):
-            branch = output[0][3::]
-        tree[branch].status = status
+        tree.active.status = status

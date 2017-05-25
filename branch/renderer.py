@@ -1,35 +1,46 @@
 from .commit import Commit
 
+COMMIT_FORMAT = '{0}     ({1}) {2}'
+ACTIVE_BRANCH_TEMPLATE = '{0}{1} [*{2}*]'
+INCATIVE_BRANCH_TEMPLATE = '{0}{1} [ {2} ]'
+
 
 class TreeRenderer:
-    COMMIT_FORMAT = '{0}     ({1}) {2}'
 
     def render_tree(self, tree):
         canvas = []
-        self._render(tree.root, canvas, 3, '', '  ')
+        self._render(tree.active, tree.root, canvas, 3, '', '  ')
         return canvas
 
-    def _render(self, branch, canvas, context, offset, prefix):
+    def _render(self, active, branch, canvas, context, offset, prefix):
         for i, key in enumerate(branch.children):
             child = branch.children[key]
             new_offset = offset.replace('.', ' ').replace('+', '|')
             new_offset += '   {}'.format(['+', '.'][i == 0])
-            self._render(child, canvas, -1, new_offset, '->')
-        canvas.append("{0}{1} [{2}]".format(offset, prefix, branch.name))
+            self._render(active, child, canvas, -1, new_offset, '->')
+
+        self._render_branch(canvas, offset, prefix, active, branch)
+        self._render_status(canvas, offset, branch)
+        for commit in branch.commits[:context]:
+            self._render_commit(canvas, offset, commit)
+
+    def _render_branch(self, canvas, offset, prefix, active, branch):
+        template = INCATIVE_BRANCH_TEMPLATE
+        if branch == active:
+            template = ACTIVE_BRANCH_TEMPLATE
+        canvas.append(template.format(offset, prefix, branch.name))
+
+    def _render_status(self, canvas, offset, branch):
         if branch.status[0]:
-            canvas.append(self._render_changes(offset, 'staged changes'))
+            self._render_changes(canvas, offset, 'staged changes')
         if branch.status[1]:
-            canvas.append(self._render_changes(offset, 'unstaged changes'))
+            self._render_changes(canvas, offset, 'unstaged changes')
         if branch.status[2]:
-            canvas.append(self._render_changes(offset, 'untracked files'))
-        for i, commit in enumerate(branch.commits):
-            if i == context:
-                break
-            canvas.append(self._render_commit(offset, commit))
+            self._render_changes(canvas, offset, 'untracked files')
 
-    def _render_commit(self, offset, commit):
-        return self._render_changes(offset, commit.hash[:7:], commit.message)
+    def _render_commit(self, canvas, offset, commit):
+        self._render_changes(canvas, offset, commit.hash[:7:], commit.message)
 
-    def _render_changes(self, offset, id, title=''):
+    def _render_changes(self, canvas, offset, id, title=''):
         offset = offset.replace('.', '|').replace('+', '|')
-        return TreeRenderer.COMMIT_FORMAT.format(offset, id, title)
+        canvas.append(COMMIT_FORMAT.format(offset, id, title))

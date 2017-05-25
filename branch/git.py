@@ -12,6 +12,17 @@ class Git:
     def __init__(self):
         self._encoding = sys.stdout.encoding
 
+    def branch(self):
+        branches = [
+            branch.replace('*', '').strip()
+            for branch
+            in self._call('git', 'branch').split('\n')
+            if '*' in branch
+        ]
+        if len(branches) == 0:
+            return 'master'
+        return branches[0]
+
     def pull(self):
         self._call('git', 'pull', '--rebase')
 
@@ -31,7 +42,7 @@ class Git:
         return self._call('git', 'show-branch', '--no-color', '--topo-order')
 
     def status(self):
-        return self._call('git', 'status', '-b', '--porcelain').split('\n')
+        return self._call('git', 'status', '--porcelain').split('\n')
 
     def merged_branches(self):
         rows = self._call('git', 'branch', '--merged', 'master') \
