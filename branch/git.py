@@ -21,11 +21,17 @@ class Git:
     def rebase(self, branch, over):
         self._call('git', 'rebase', over, branch)
 
+    def cherry_pick(self, branch):
+        pass
+
     def remote_branches(self):
         return self._call('git', 'branch', '--remote')
 
     def show_branch(self):
         return self._call('git', 'show-branch', '--no-color', '--topo-order')
+
+    def status(self):
+        return self._call('git', 'status', '-b', '--porcelain').split('\n')
 
     def merged_branches(self):
         rows = self._call('git', 'branch', '--merged', 'master') \

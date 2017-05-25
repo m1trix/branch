@@ -4,6 +4,10 @@ from .branch import Branch
 from .commit import Commit
 
 BRANCH_KNOT = '^([\\s*+-]+?)\\s\\[(.+?)(?:[~^]\\d*)*\\]'
+INITIAL_STATUS = [False, False, False]
+STAGED_FILES = 0
+UNSTAGED_FILES = 1
+UNTRACKED_FILES = 2
 
 
 class Tree:
@@ -50,6 +54,7 @@ class TreeBuilder:
         if self._include_commits:
             for branch in branches:
                 self._build_commits(branch)
+            self._detect_uncommitted_changes(tree)
 
         return tree
 
@@ -100,3 +105,23 @@ class TreeBuilder:
         lines = [line for line in output.strip().split('\n') if line != '']
         commits = [line.split(maxsplit=1) for line in lines]
         branch.commits = [Commit(hash, message) for hash, message in commits]
+
+    def _detect_uncommitted_changes(self, tree):
+        output = self._git.status()
+        status = INITIAL_STATUS[:]
+        for row in output:
+            print(row)
+            if row.strip() == '' or row.startswith('##'):
+                continue
+            if row.startswith('??'):
+                status[UNTRACKED_FILES] = True
+                continue
+            if row[1] != ' ':
+                status[UNSTAGED_FILES] = True
+            if row[0] != ' ':
+                status[STAGED_FILES] = True
+
+        branch = 'master'
+        if output[0].startswith('## '):
+            branch = output[0][3::]
+        tree[branch].status = status
