@@ -3,6 +3,7 @@ class Branch:
         self._name = name
         self._parent = parent
         self._children = {}
+        self._status = [False, False, False]
         self._commits = commits
         self._is_remote = False
 
@@ -47,9 +48,17 @@ class Branch:
     def commits(self):
         return self._commits
 
+    @property
+    def status(self):
+        return self._status
+
     @commits.setter
     def commits(self, commits):
         self._commits = commits
+
+    @status.setter
+    def status(self, status):
+        self._status = status
 
     def is_parent_of(self, branch):
         if not branch or not branch.parent:
