@@ -4,24 +4,28 @@ COMMIT_FORMAT = '{0}     ({1}) {2}'
 ACTIVE_BRANCH_TEMPLATE = '{0}{1} [*{2}*]'
 INCATIVE_BRANCH_TEMPLATE = '{0}{1} [ {2} ]'
 
+CONTEXT = {
+    'master': 3
+}
+
 
 class TreeRenderer:
 
     def render_tree(self, tree):
         canvas = []
-        self._render(tree.active, tree.root, canvas, 3, '', '  ')
+        self._render(tree.active, tree.root, canvas, '', '  ')
         return canvas
 
-    def _render(self, active, branch, canvas, context, offset, prefix):
+    def _render(self, active, branch, canvas, offset, prefix):
         for i, key in enumerate(branch.children):
             child = branch.children[key]
             new_offset = offset.replace('.', ' ').replace('+', '|')
             new_offset += '   {}'.format(['+', '.'][i == 0])
-            self._render(active, child, canvas, -1, new_offset, '->')
+            self._render(active, child, canvas, new_offset, '->')
 
         self._render_branch(canvas, offset, prefix, active, branch)
         self._render_status(canvas, offset, branch)
-        for commit in branch.commits[:context]:
+        for commit in branch.commits[:CONTEXT.get(branch.name)]:
             self._render_commit(canvas, offset, commit)
 
     def _render_branch(self, canvas, offset, prefix, active, branch):
