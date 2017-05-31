@@ -58,13 +58,9 @@ class Git:
         self.checkout('master')
         return self._call('git', 'branch', '--delete', *branches)
 
-    def log(self, fr=None, to=None):
-        command = ['git', 'log', '--pretty=oneline']
-        if fr is not None:
-            command.append(fr)
-        if to is not None:
-            command[-1] += '..' + to
-        return self._call(*command)
+    def log(self):
+        return self._call('git', 'log', '--all', '--oneline', '--decorate',
+                          '--no-color', '--parents').split('\n')
 
     def _call(self, *command):
         process = run(command, stdout=PIPE)

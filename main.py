@@ -14,4 +14,5 @@ if __name__ == "__main__":
         Engine(Git(), Display(), Controller()).run()
 
     except Exception as e:
-        Display().message('Operation failed:\n  ' + str(e), type=Message.error)
+        # Display().message('Operation failed:\n  ' + str(e), type=Message.error)
+        raise

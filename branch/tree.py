@@ -3,7 +3,7 @@ import re
 from .branch import Branch
 from .commit import Commit
 
-BRANCH_KNOT = '^([\\s*+-]+?)\\s\\[(.+?)(?:[~^]\\d*)*\\]'
+COMMIT_PATTERN = '([a-z0-9]+)\s+([a-z0-9]+)\s+(\(.+?\))?\s*(.*)'
 INITIAL_STATUS = [False, False, False]
 
 STAGED_FILES = 0
@@ -12,14 +12,11 @@ UNTRACKED_FILES = 2
 
 
 class Tree:
-    def __init__(self, active, branches, remotes):
-        self._active = active
+    def __init__(self, branches, root='master', active='master'):
         self._branches = branches
-        self._remotes = [
-            branches[name] for name in remotes if name in branches
-        ]
-        for branch in self._remotes:
-            branch.is_remote = True
+        self._active = 'master'
+        self._root = root
+        self._remotes = []
 
     def __getitem__(self, name):
         return self._branches[name]
@@ -40,91 +37,46 @@ class Tree:
 class TreeBuilder:
     def __init__(self, git):
         self._git = git
-        self._include_commits = False
-
-    def include_commits(self, include_commits):
-        self._include_commits = include_commits
-        return self
 
     def build(self):
-        parts = re.split('-+\n', self._git.show_branch())
-        branches = self._build_branches(parts[0])
-        remotes = [
-            row.replace('*', ' ').replace('origin/', '').strip()
-            for row in self._git.remote_branches().split('\n')
-        ]
+        branches = {}
+        queue = []
+        active = 'master'
+        branch = None
 
-        current = self._git.branch()
-        tree = Tree(
-            current, {branch.name: branch for branch in branches}, remotes)
-        len(parts) > 1 and self._build_tree(tree, branches, parts[1])
-
-        if self._include_commits:
-            for branch in branches:
-                self._build_commits(branch)
-            self._detect_uncommitted_changes(tree)
-
-        return tree
-
-    def _build_branches(self, raw_data):
-        lines = raw_data.split('\n')
-        matchers = [re.match('^.*?\\[(.+?)\\]', line) for line in lines]
-        return [Branch(matcher.group(1)) for matcher in matchers if matcher]
-
-    def _build_tree(self, tree, branches, raw_data):
-        knots = self._parse_knots(raw_data)
-        self._calculate_parents(knots, tree, branches)
-        self._ensure_master_is_root(tree)
-        self._fill_in_child_branches(branches)
-
-    def _parse_knots(self, raw_data):
-        lines = raw_data.split('\n')
-        matchers = [re.match(BRANCH_KNOT, line) for line in lines]
-        return [matcher.group(1, 2) for matcher in matchers if matcher]
-
-    def _calculate_parents(self, knots, tree, branches):
-        for knot, name in knots:
-            for i, c in enumerate(knot):
-                if ' ' == c:
-                    continue
-                if branches[i].name == name:
-                    continue
-                if branches[i].parent is None:
-                    branches[i].parent = tree[name]
-                if branches[i].parent.is_parent_of(tree[name]):
-                    branches[i].parent = tree[name]
-
-    def _ensure_master_is_root(self, tree):
-        master = tree['master']
-        while master.has_parent:
-            parent = master.parent
-            master.parent, parent.parent = parent.parent, master
-
-    def _fill_in_child_branches(self, branches):
-        for branch in branches:
-            if branch.has_parent:
-                branch.parent.children[branch.name] = branch
-
-    def _build_commits(self, branch):
-        if not branch.has_parent:
-            output = self._git.log(branch.name)
-        else:
-            output = self._git.log(branch.parent.name, branch.name)
-        lines = [line for line in output.strip().split('\n') if line != '']
-        commits = [line.split(maxsplit=1) for line in lines]
-        branch.commits = [Commit(hash, message) for hash, message in commits]
-
-    def _detect_uncommitted_changes(self, tree):
-        output = self._git.status()
-        status = INITIAL_STATUS[:]
-        for row in output:
-            if row.strip() == '':
+        for line in self._git.log():
+            matcher = re.match(COMMIT_PATTERN, line.strip())
+            if not matcher:
                 continue
-            if row.startswith('??'):
-                status[UNTRACKED_FILES] = True
-                continue
-            if row[1] != ' ':
-                status[UNSTAGED_FILES] = True
-            if row[0] != ' ':
-                status[STAGED_FILES] = True
-        tree.active.status = status
+
+            commit = Commit(
+                matcher.group(1), matcher.group(2), matcher.group(4))
+            if matcher.group(3):
+                entries = matcher.group(3)[1:-1].split(', ')
+                names = []
+                for name in entries:
+                    if name.startswith('tag: '):
+                        continue
+
+                    if name.startswith('HEAD -> '):
+                        name = name[8:]
+                        active = name
+
+                    names.append(name)
+                branch = Branch(names)
+                branches[branch.name] = branch
+                new_queue = []
+                for child in queue:
+                    if child.commits[-1].parent == commit.hash:
+                        child.parent = branch
+                        branch.children[child.name] = child
+
+                    else:
+                        new_queue.append(child)
+
+                queue = new_queue
+                queue.append(branch)
+
+            branch.commits.append(commit)
+
+        return Tree(branches, active=active, root=queue[0])

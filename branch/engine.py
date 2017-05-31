@@ -27,9 +27,9 @@ class Engine:
     def run(self):
         try:
             command, options = self._controller.select(self._build_commands())
-            initial_tree = self._detect_tree(options.get('commits', False))
+            initial_tree = self._detect_tree()
             if command is None:
-                self._display.render(TreeRenderer().render_tree(initial_tree))
+                self._display.render(TreeRenderer().render_tree(initial_tree, options.get('commits', False)))
                 return
             if command == 'pull':
                 self._display.render(TreeRenderer().render_tree(initial_tree))
@@ -43,8 +43,8 @@ class Engine:
         except(KeyboardInterrupt):
             return
 
-    def _detect_tree(self, include_commits):
-        return TreeBuilder(self._git).include_commits(include_commits).build()
+    def _detect_tree(self):
+        return TreeBuilder(self._git).build()
 
     def _pull_remotes(self, tree):
         self._display.message('Checking out to {}', tree.root.name)

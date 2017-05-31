@@ -1,24 +1,28 @@
 class Branch:
-    def __init__(self, name, parent=None, commits=[]):
-        self._name = name
+    def __init__(self, names, parent=None, commits=None):
+        self._names = sorted(names, key=lambda x: x == 'master' and '' or x)
         self._parent = parent
         self._children = {}
         self._status = [False, False, False]
-        self._commits = commits
+        self._commits = commits or []
         self._is_remote = False
 
     def __eq__(self, other):
-        return isinstance(other, Branch) and (self._name == other._name)
+        return isinstance(other, Branch) and (self.name in other.names)
 
     def __str__(self):
-        return self._name
+        return self.name
 
     def __repr__(self):
-        return self._name
+        return self.name
 
     @property
     def name(self):
-        return self._name
+        return self._names[0]
+
+    @property
+    def names(self):
+        return self._names
 
     @property
     def is_remote(self):
