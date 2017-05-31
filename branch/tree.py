@@ -14,9 +14,14 @@ UNTRACKED_FILES = 2
 class Tree:
     def __init__(self, branches, root='master', active='master'):
         self._branches = branches
-        self._active = 'master'
-        self._root = root
+        self._active = self._find_active(branches.values(), active)
+        self._root = branches[root]
         self._remotes = []
+
+    def _find_active(self, branches, active):
+        for branch in branches:
+            if active in branch.names:
+                return branch
 
     def __getitem__(self, name):
         return self._branches[name]
@@ -27,11 +32,11 @@ class Tree:
 
     @property
     def root(self):
-        return self._branches['master']
+        return self._root
 
     @property
     def active(self):
-        return self._branches[self._active]
+        return self._active
 
 
 class TreeBuilder:
@@ -55,6 +60,7 @@ class TreeBuilder:
                 entries = matcher.group(3)[1:-1].split(', ')
                 names = []
                 for name in entries:
+                    name = name.strip()
                     if name.startswith('tag: '):
                         continue
 
@@ -79,4 +85,4 @@ class TreeBuilder:
 
             branch.commits.append(commit)
 
-        return Tree(branches, active=active, root=queue[0])
+        return Tree(branches, active=active, root=queue[0].name)
