@@ -1,12 +1,14 @@
 class Branch:
-    def __init__(self, names, parent=None, commits=None):
-        self._names = names
+    def __init__(self, names, parent=None, commits=None, active=False):
         self._name = self._select_name(names)
+        self._aliases = self._select_aliases(names)
+        self._aliases.remove(self._name)
         self._parent = parent
         self._children = {}
         self._status = [False, False, False]
         self._commits = commits or []
         self._is_remote = self._has_remotes(names)
+        self._is_active = active
 
     def _select_name(self, names):
         for name in names:
@@ -18,36 +20,38 @@ class Branch:
 
         return names[0]
 
+    def _select_aliases(self, names):
+        result = set()
+        for name in names:
+            if not name.startswith('origin/'):
+                result.add(name)
+
+        if len(result) == 0:
+            result = names
+
+        return result
+
     def _has_remotes(self, names):
         for name in names:
             if name.startswith('origin/'):
                 return True
         return False
 
-    def __eq__(self, other):
-        return isinstance(other, Branch) and (self.name in other.names)
-
-    def __str__(self):
-        return self.name
-
-    def __repr__(self):
-        return self.name
-
     @property
     def name(self):
         return self._name
 
     @property
-    def names(self):
-        return self._names
+    def aliases(self):
+        return self._aliases
 
     @property
     def is_remote(self):
         return self._is_remote
 
-    @is_remote.setter
-    def is_remote(self, is_remote):
-        self._is_remote = is_remote
+    @property
+    def is_active(self):
+        return self._is_active
 
     @property
     def children(self):

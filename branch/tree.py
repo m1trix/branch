@@ -12,23 +12,18 @@ UNTRACKED_FILES = 2
 
 
 class Tree:
-    def __init__(self, branches, root='master', active='master'):
+    def __init__(self, branches, root='master'):
         self._branches = branches
-        self._active = self._find_active(branches.values(), active)
+        self._active = self._find_active(branches.values())
         self._root = branches[root]
-        self._remotes = []
 
-    def _find_active(self, branches, active):
+    def _find_active(self, branches):
         for branch in branches:
-            if active in branch.names:
+            if branch.is_active:
                 return branch
 
     def __getitem__(self, name):
         return self._branches[name]
-
-    @property
-    def remotes(self):
-        return self._remotes
 
     @property
     def root(self):
@@ -46,7 +41,6 @@ class TreeBuilder:
     def build(self):
         branches = {}
         queue = []
-        active = 'master'
         branch = None
 
         for line in self._git.log():
@@ -59,6 +53,7 @@ class TreeBuilder:
             if matcher.group(3):
                 entries = matcher.group(3)[1:-1].split(', ')
                 names = []
+                is_active = False
                 for name in entries:
                     name = name.strip()
                     if name.startswith('tag: '):
@@ -66,10 +61,10 @@ class TreeBuilder:
 
                     if name.startswith('HEAD -> '):
                         name = name[8:]
-                        active = name
+                        is_active = True
 
                     names.append(name)
-                branch = Branch(names)
+                branch = Branch(names, active=is_active)
                 branches[branch.name] = branch
                 new_queue = []
                 for child in queue:
@@ -85,4 +80,4 @@ class TreeBuilder:
 
             branch.commits.append(commit)
 
-        return Tree(branches, active=active, root=queue[0].name)
+        return Tree(branches, root=queue[0].name)
