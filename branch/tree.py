@@ -33,6 +33,10 @@ class Tree:
     def active(self):
         return self._active
 
+    @property
+    def branches(self):
+        return self._branches.values()
+
 
 class TreeBuilder:
     def __init__(self, git):

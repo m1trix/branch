@@ -55,7 +55,6 @@ class Git:
         ]
 
     def delete_branches(self, branches):
-        self.checkout('master')
         return self._call('git', 'branch', '--delete', *branches)
 
     def log(self):

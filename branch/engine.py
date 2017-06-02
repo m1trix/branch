@@ -11,8 +11,7 @@ from .renderer import TreeRenderer
 PROGRAM_HELP = 'Used to view and manage local git branches.'
 PULL_COMMAND_HELP = 'Pulls all remote branches and rebases local ones over' + \
     ' their respective parrents.'
-WIPE_COMMAND_HELP = 'Deletes all local branches that are already merged' + \
-    ' the master branch.'
+WIPE_COMMAND_HELP = 'Deletes all local alias branches.'
 
 COMMITS_OPTION_HELP = 'Displays commits in the branch tree.'
 WIPE_OPTION_HELP = 'Invokes the wipe command after the pull finishes.'
@@ -27,19 +26,24 @@ class Engine:
     def run(self):
         try:
             command, options = self._controller.select(self._build_commands())
-            initial_tree = self._detect_tree()
+            tree = self._detect_tree()
             if command is None:
-                self._display.render(TreeRenderer().render_tree(initial_tree, options.get('commits', False)))
+                render_commits = options.get('commits', False)
+                self._display.render(
+                    TreeRenderer().render_tree(tree, render_commits))
                 return
+
             if command == 'pull':
-                self._display.render(TreeRenderer().render_tree(initial_tree))
-                self._pull_remotes(initial_tree)
+                self._display.render(TreeRenderer().render_tree(tree))
+                self._pull_remotes(tree)
                 if options.get('wipe', False):
-                    self._wipe()
+                    self._wipe(tree)
                 return
+
             if command == 'wipe':
-                self._wipe()
+                self._wipe(tree)
                 return
+
         except(KeyboardInterrupt):
             return
 
@@ -64,18 +68,21 @@ class Engine:
                 self._git.rebase(branch.name, root.name)
             self._rebase_children(branch)
 
-    def _wipe(self):
-        self._display.message('Detecting merged branches ...')
-        branches = self._git.merged_branches()
+    def _wipe(self, tree):
+        self._display.message('Collecting alias branches ...')
+        active = tree.active
 
-        if len(branches) is 0:
-            self._display.message('No branches detected.')
-            return
+        for branch in tree.branches:
+            aliases = branch.aliases
+            if len(aliases) is 0:
+                continue
 
-        self._display.message('Detected branches: {}.', ', '.join(branches))
-        self._display.message('Deleting branches ...')
-        self._git.delete_branches(branches)
+            self._display.message('Deleting: {} ...', ', '.join(aliases))
+            self._git.checkout(branch.name)
+            self._git.delete_branches(aliases)
+
         self._display.message('Success.')
+        self._git.checkout(active.name)
 
     def _build_commands(self):
         return [
