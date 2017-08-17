@@ -1,3 +1,6 @@
+from collections import OrderedDict
+
+
 class Branch:
     def __init__(self, names, **kwargs):
         self._id = self._select_id(names)
@@ -5,7 +8,7 @@ class Branch:
         self._aliases = self._select_aliases(names)
         self._aliases.remove(self._name)
         self._parent = kwargs.get('parent')
-        self._children = {}
+        self._children = OrderedDict()
         self._status = [False, False, False]
         self._commits = kwargs.get('commits') or []
         self._is_remote = self._has_remotes(names)
