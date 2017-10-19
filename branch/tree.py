@@ -3,7 +3,7 @@ import re
 from .branch import Branch
 from .commit import Commit
 
-COMMIT_PATTERN = '([a-z0-9]+)\s+([a-z0-9]+)\s+(\(.+?\))?\s*(.*)'
+COMMIT_PATTERN = '([a-z0-9]+)\s+([a-z0-9]+)\s+(?:\((.+?)\))?\s*(.*)'
 INITIAL_STATUS = [False, False, False]
 
 STAGED_FILES = 0
@@ -55,7 +55,7 @@ class TreeBuilder:
             commit = Commit(
                 matcher.group(1), matcher.group(2), matcher.group(4))
             if matcher.group(3):
-                entries = matcher.group(3)[1:-1].split(', ')
+                entries = matcher.group(3).split(', ')
                 names = []
                 is_active = False
                 for name in entries:
@@ -68,20 +68,32 @@ class TreeBuilder:
                         is_active = True
 
                     names.append(name)
-                branch = Branch(names, active=is_active)
-                branches[branch.name] = branch
-                new_queue = []
-                for child in queue:
-                    if child.commits[-1].parent == commit.hash:
-                        child.parent = branch
-                        branch.children[child.name] = child
+                if len(names) > 0:
+                    branch = Branch(names, active=is_active)
+                    branches[branch.name] = branch
+                    new_queue = []
+                    for child in queue:
+                        if child.commits[-1].parent == commit.hash:
+                            child.parent = branch
+                            branch.children[child.name] = child
 
-                    else:
-                        new_queue.append(child)
+                        else:
+                            new_queue.append(child)
 
-                queue = new_queue
-                queue.append(branch)
+                    queue = new_queue
+                    queue.append(branch)
 
             branch.commits.append(commit)
 
-        return Tree(branches, root=queue[0].name)
+        root = self._select_root(queue)
+        for branch in queue:
+            if branch != root:
+                branch.parent = root
+        return Tree(branches, root=root.name)
+
+    def _select_root(self, queue):
+        prefered_roots = [branch for branch in queue if branch.name == 'master']
+        if len(prefered_roots) > 0:
+            return prefered_roots[0]
+        root = queue[0].name
+
