@@ -28,7 +28,7 @@ class TreeRenderer:
         self._render_branch(canvas, offset + prefix, branch)
         self._render_status(canvas, offset, branch)
         if show_commits:
-            for commit in branch.commits[:CONTEXT.get(branch.name)]:
+            for commit in branch.commits[:CONTEXT.get(branch.id)]:
                 self._render_commit(canvas, offset, commit)
 
     def _render_branch(self, canvas, prefix, branch):

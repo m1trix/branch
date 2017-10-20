@@ -58,6 +58,7 @@ class TreeBuilder:
                 entries = matcher.group(3).split(', ')
                 names = []
                 is_active = False
+                display_name = None
                 for name in entries:
                     name = name.strip()
                     if name.startswith('tag: '):
@@ -65,17 +66,18 @@ class TreeBuilder:
 
                     if name.startswith('HEAD -> '):
                         name = name[8:]
+                        display_name = name
                         is_active = True
 
                     names.append(name)
                 if len(names) > 0:
-                    branch = Branch(names, active=is_active)
-                    branches[branch.name] = branch
+                    branch = Branch(names, active=is_active, name=display_name)
+                    branches[branch.id] = branch
                     new_queue = []
                     for child in queue:
                         if child.commits[-1].parent == commit.hash:
                             child.parent = branch
-                            branch.children[child.name] = child
+                            branch.children[child.id] = child
 
                         else:
                             new_queue.append(child)
@@ -87,13 +89,12 @@ class TreeBuilder:
 
         root = self._select_root(queue)
         for branch in queue:
-            if branch != root:
+            if branch.id != root.id:
                 branch.parent = root
-        return Tree(branches, root=root.name)
+        return Tree(branches, root=root.id)
 
     def _select_root(self, queue):
-        prefered_roots = [branch for branch in queue if branch.name == 'master']
-        if len(prefered_roots) > 0:
-            return prefered_roots[0]
-        root = queue[0].name
-
+        preferred = [branch for branch in queue if branch.id == 'master']
+        if len(preferred) > 0:
+            return preferred[0]
+        return queue[0]

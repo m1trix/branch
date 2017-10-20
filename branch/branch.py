@@ -1,20 +1,21 @@
 class Branch:
-    def __init__(self, names, parent=None, commits=None, active=False):
-        self._name = self._select_name(names)
+    def __init__(self, names, **kwargs):
+        self._id = self._select_id(names)
+        self._name = kwargs.get('name') or self._id
         self._aliases = self._select_aliases(names)
         self._aliases.remove(self._name)
-        self._parent = parent
+        self._parent = kwargs.get('parent')
         self._children = {}
         self._status = [False, False, False]
-        self._commits = commits or []
+        self._commits = kwargs.get('commits') or []
         self._is_remote = self._has_remotes(names)
-        self._is_active = active
+        self._is_active = kwargs.get('active') or False
 
-    def _select_name(self, names):
+    def _select_id(self, names):
+        if 'master' in names:
+            return 'master'
+
         for name in names:
-            if name == 'master':
-                return 'master'
-
             if not name.startswith('origin/'):
                 return name
 
@@ -36,6 +37,10 @@ class Branch:
             if name.startswith('origin/'):
                 return True
         return False
+
+    @property
+    def id(self):
+        return self._id
 
     @property
     def name(self):

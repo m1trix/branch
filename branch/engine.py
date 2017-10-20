@@ -51,21 +51,21 @@ class Engine:
         return TreeBuilder(self._git).build()
 
     def _pull_remotes(self, tree):
-        self._display.message('Checking out to {}', tree.root.name)
-        self._git.checkout(tree.root.name)
+        self._display.message('Checking out to {}', tree.root.id)
+        self._git.checkout(tree.root.id)
 
-        self._display.message('Pulling remote {} ...', tree.root.name)
+        self._display.message('Pulling remote {} ...', tree.root.id)
         self._git.pull()
 
         self._rebase_children(tree.root)
 
     def _rebase_children(self, root):
-        self._display.message("Rebasing any '{}' child branches...", root.name)
+        self._display.message("Rebasing any '{}' child branches...", root.id)
         for branch in root.children.values():
             if branch.is_remote is False:
                 self._display.message(
-                    "  Rebasing '{0}' over '{1}' ...", branch.name, root.name)
-                self._git.rebase(branch.name, root.name)
+                    "  Rebasing '{0}' over '{1}' ...", branch.id, root.id)
+                self._git.rebase(branch.id, root.id)
             self._rebase_children(branch)
 
     def _wipe(self, tree):
@@ -78,11 +78,11 @@ class Engine:
                 continue
 
             self._display.message('Deleting: {} ...', ', '.join(aliases))
-            self._git.checkout(branch.name)
+            self._git.checkout(branch.id)
             self._git.delete_branches(aliases)
 
         self._display.message('Success.')
-        self._git.checkout(active.name)
+        self._git.checkout(active.id)
 
     def _build_commands(self):
         return [
