@@ -46,46 +46,53 @@ class TreeBuilder:
         branches = {}
         queue = []
         branch = None
+        master_context = 0
 
-        for line in self._git.log():
-            matcher = re.match(COMMIT_PATTERN, line.strip())
-            if not matcher:
-                continue
+        with self._git.log() as log:
+            for line in log:
+                if master_context > 3:
+                    break
 
-            commit = Commit(
-                matcher.group(1), matcher.group(2), matcher.group(4))
-            if matcher.group(3):
-                entries = matcher.group(3).split(', ')
-                names = []
-                is_active = False
-                display_name = None
-                for name in entries:
-                    name = name.strip()
-                    if name.startswith('tag: '):
-                        continue
+                matcher = re.match(COMMIT_PATTERN, line.strip())
+                if not matcher:
+                    continue
 
-                    if name.startswith('HEAD -> '):
-                        name = name[8:]
-                        display_name = name
-                        is_active = True
+                commit = Commit(
+                    matcher.group(1), matcher.group(2), matcher.group(4))
+                if matcher.group(3):
+                    entries = matcher.group(3).split(', ')
+                    names = []
+                    is_active = False
+                    active_name = None
+                    for name in entries:
+                        name = name.strip()
+                        if name.startswith('tag: '):
+                            continue
 
-                    names.append(name)
-                if len(names) > 0:
-                    branch = Branch(names, active=is_active, name=display_name)
-                    branches[branch.id] = branch
-                    new_queue = []
-                    for child in queue:
-                        if child.commits[-1].parent == commit.hash:
-                            child.parent = branch
-                            branch.children[child.id] = child
+                        if name.startswith('HEAD -> '):
+                            name = name[8:]
+                            active_name = name
+                            is_active = True
 
-                        else:
-                            new_queue.append(child)
+                        names.append(name)
+                    if len(names) > 0:
+                        branch = Branch(names, active=is_active, name=active_name)
+                        branches[branch.id] = branch
+                        new_queue = []
+                        for child in queue:
+                            if child.commits[-1].parent == commit.hash:
+                                child.parent = branch
+                                branch.children[child.id] = child
 
-                    queue = new_queue
-                    queue.append(branch)
+                            else:
+                                new_queue.append(child)
 
-            branch.commits.append(commit)
+                        queue = new_queue
+                        queue.append(branch)
+
+                branch.commits.append(commit)
+                if branch.id == 'master':
+                    master_context += 1
 
         root = self._select_root(queue)
         for branch in queue:

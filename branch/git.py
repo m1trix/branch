@@ -1,17 +1,36 @@
 import sys
 
 from subprocess import PIPE
+from subprocess import Popen
 from subprocess import run
+
+
+ENCODING = sys.stdout.encoding
 
 
 class GitException(Exception):
     pass
 
 
-class Git:
-    def __init__(self):
-        self._encoding = sys.stdout.encoding
+class GitInteractor:
+    def __init__(self, *command):
+        self._command = command
 
+    def __enter__(self):
+        self._process = Popen(self._command, stdout=PIPE)
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self._process.terminate()
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        return self._process.stdout.readline().decode(ENCODING)[:-1]
+
+
+class Git:
     def branch(self):
         branches = [
             branch.replace('*', '').strip()
@@ -58,10 +77,16 @@ class Git:
         return self._call('git', 'branch', '--delete', *branches)
 
     def log(self):
-        return self._call('git', 'log', '--all', '--oneline', '--decorate',
-                          '--no-color', '--parents').split('\n')
+        return GitInteractor(
+            'git',
+            'log',
+            '--all',
+            '--oneline',
+            '--decorate',
+            '--no-color',
+            '--parents')
 
     def _call(self, *command):
         process = run(command, stdout=PIPE)
         process.check_returncode()
-        return process.stdout.decode(self._encoding)
+        return process.stdout.decode(ENCODING)
