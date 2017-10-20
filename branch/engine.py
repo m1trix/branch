@@ -37,6 +37,7 @@ class Engine:
                 self._display.render(TreeRenderer().render_tree(tree))
                 self._pull_remotes(tree)
                 if options.get('wipe', False):
+                    tree = self._detect_tree()
                     self._wipe(tree)
                 return
 
