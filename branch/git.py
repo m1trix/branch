@@ -27,7 +27,11 @@ class GitInteractor:
         return self
 
     def __next__(self):
-        return self._process.stdout.readline().decode(ENCODING)[:-1]
+        line = self._process.stdout.readline().decode(ENCODING)[:-1]
+        if line == '':
+            raise StopIteration()
+
+        return line
 
 
 class Git:
