@@ -1,17 +1,20 @@
 class Branch:
-    def __init__(self, names, **kwargs):
+    def __init__(self, ref, names, commits):
+        self._ref = ref
         self._id = self._select_id(names)
-        self._name = kwargs.get('name') or self._id
         self._aliases = self._select_aliases(names)
-        self._aliases.remove(self._name)
-        self._parent = kwargs.get('parent')
+        self._aliases.discard(self._id)
+        self._parent = None
         self._children = {}
-        self._status = [False, False, False]
-        self._commits = kwargs.get('commits') or []
+        self._commits = commits
         self._is_remote = self._has_remotes(names)
-        self._is_active = kwargs.get('active') or False
+        self._is_active = False
+        self._status = [False, False, False]
 
     def _select_id(self, names):
+        if len(names) == 0:
+            return ''
+
         if 'master' in names:
             return 'master'
 
@@ -30,7 +33,7 @@ class Branch:
         if len(result) == 0:
             result = names
 
-        return result
+        return set(result)
 
     def _has_remotes(self, names):
         for name in names:
@@ -39,12 +42,13 @@ class Branch:
         return False
 
     @property
-    def id(self):
-        return self._id
+    def ref(self):
+        # Use ID instead
+        return self._ref
 
     @property
-    def name(self):
-        return self._name
+    def id(self):
+        return self._id
 
     @property
     def aliases(self):
@@ -57,6 +61,10 @@ class Branch:
     @property
     def is_active(self):
         return self._is_active
+
+    @is_active.setter
+    def is_active(self, is_active):
+        self._is_active = is_active
 
     @property
     def children(self):
