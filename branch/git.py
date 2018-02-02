@@ -7,6 +7,7 @@ from subprocess import Popen
 from subprocess import run
 
 from .branch import Branch
+from .branch import Stage
 from .commit import Commit
 from .tree import Tree
 
@@ -91,7 +92,9 @@ class Git:
         reader = TreeReader(include_commits)
         with self._log() as log:
             data = reader.read(self._branches(), log)
-        return TreeBuilder.build_tree(data, include_commits)
+        tree = TreeBuilder.build_tree(data, include_commits)
+        tree.active.stage = self._build_stage()
+        return tree
 
     def _log(self):
         return GitInteractor(
@@ -106,6 +109,25 @@ class Git:
             in self._call('git', 'branch').split('\n')
             if branch != ''
         )
+
+    def _build_stage(self):
+        output = self.status()
+        staged = False
+        unstaged = False
+        untracked = False
+        for row in output:
+            print(row)
+            if row.strip() == '' or row.startswith('##'):
+                continue
+            if row.startswith('??'):
+                untracked = True
+                continue
+            if row[1] != ' ':
+                unstaged = True
+            if row[0] != ' ':
+                staged = True
+
+        return Stage(staged, unstaged, untracked)
 
     def _call(self, *command):
         process = run(command, stdout=PIPE)

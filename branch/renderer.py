@@ -22,7 +22,7 @@ class TreeRenderer:
             self._render(child, canvas, new_offset, '->')
 
         self._render_branch(canvas, offset + prefix, branch)
-        self._render_status(canvas, offset, branch)
+        self._render_stage(canvas, offset, branch)
         for commit in branch.commits:
             self._render_commit(canvas, offset, commit)
 
@@ -50,12 +50,14 @@ class TreeRenderer:
 
         return result
 
-    def _render_status(self, canvas, offset, branch):
-        if branch.status[0]:
+    def _render_stage(self, canvas, offset, branch):
+        if branch.stage is None:
+            return
+        if branch.stage.staged:
             self._render_changes(canvas, offset, 'staged changes')
-        if branch.status[1]:
+        if branch.stage.unstaged:
             self._render_changes(canvas, offset, 'unstaged changes')
-        if branch.status[2]:
+        if branch.stage.untracked:
             self._render_changes(canvas, offset, 'untracked files')
 
     def _render_commit(self, canvas, offset, commit):

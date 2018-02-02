@@ -1,15 +1,34 @@
+class Stage:
+
+    def __init__(self, staged, unstaged, untracked):
+        self._staged = staged
+        self._unstaged = unstaged
+        self._untracked = untracked
+
+    @property
+    def staged(self):
+        return self._staged
+
+    @property
+    def unstaged(self):
+        return self._unstaged
+
+    @property
+    def untracked(self):
+        return self._untracked
+
+
 class Branch:
     def __init__(self, ref, names, commits):
         self._ref = ref
         self._id = self._select_id(names)
         self._aliases = self._select_aliases(names)
         self._aliases.discard(self._id)
-        self._parent = None
         self._children = {}
         self._commits = commits
         self._is_remote = self._has_remotes(names)
         self._is_active = False
-        self._status = [False, False, False]
+        self._stage = None
 
     def _select_id(self, names):
         if len(names) == 0:
@@ -71,36 +90,17 @@ class Branch:
         return self._children
 
     @property
-    def parent(self):
-        return self._parent
-
-    @property
-    def has_parent(self):
-        return self._parent is not None
-
-    @parent.setter
-    def parent(self, parent):
-        self._parent = parent
-
-    @property
     def commits(self):
         return self._commits
-
-    @property
-    def status(self):
-        return self._status
 
     @commits.setter
     def commits(self, commits):
         self._commits = commits
 
-    @status.setter
-    def status(self, status):
-        self._status = status
+    @property
+    def stage(self):
+        return self._stage
 
-    def is_parent_of(self, branch):
-        if not branch or not branch.parent:
-            return False
-        if self == branch.parent:
-            return True
-        return self.is_parent_of(branch.parent)
+    @stage.setter
+    def stage(self, stage):
+        self._stage = stage
