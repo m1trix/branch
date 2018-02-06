@@ -69,21 +69,19 @@ class Engine:
 
     def _wipe(self, tree):
         self._display.message('Collecting alias branches ...')
-        active = tree.active
+        head = tree.head
 
         for branch in tree.branches:
-            names = branch.names
-            if len(names) < 1:
+            aliases = branch.aliases
+            if len(aliases) is 0:
                 continue
 
-            name = names[0]
-            aliases = names[1:]
             self._display.message('Deleting: {} ...', ', '.join(aliases))
-            self._git.checkout(name)
+            self._git.checkout(branch.id)
             self._git.delete_branches(aliases)
 
         self._display.message('Success.')
-        self._git.checkout(active.id)
+        self._git.checkout(head.id)
 
     def _build_commands(self):
         return [

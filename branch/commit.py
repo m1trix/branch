@@ -15,4 +15,4 @@ class Commit:
         return self._id
 
     def __eq__(self, other):
-        return isinstance(other, Commit) and (self._hash == other._hash)
+        return isinstance(other, Commit) and (self._id == other._id)

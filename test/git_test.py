@@ -397,31 +397,37 @@ class TestTreeBuilder(unittest.TestCase):
         ])
         self.assertBranchRelations(tree, {
             'b299199': ['b7c3625', 'e6770b0'],
-            'b7c3625': [],
-            'e6770b0': ['de5005c', '18dcc52'],
-            'de5005c': [],
-            '18dcc52': []
+            'e6770b0': ['de5005c', '18dcc52']
         })
 
-    # def test_multiname_branches(self):
-    #     self.git.prepare_branches(['fixes', 'master', 'feature'])
-    #     self.git.prepare_log([
-    #         '[C:e5ff570][P:e85997d][R:HEAD -> feature][M:Fixed a bug in the features]',
-    #         '[C:e85997d][P:c3624d3][R:master, fixes][M:Fixed a third bug]'
-    #     ])
+    def test_multiname_branches(self):
+        data = self.tree_data(
+            head='e5ff570',
+            root='e85997d',
+            tree={
+                'c3624d3': ['e85997d'],
+                'e85997d': ['e5ff570']
+            },
+            branches={
+                'e85997d': ['master', 'fixes'],
+                'e5ff570': ['feature']
+            },
+            commits=self.commits({
+                'e5ff570': 'Fixed a bug in the features',
+                'e85997d': 'Fixed a third bug'
+            }))
 
-    #     tree = self.git.tree(True)
+        tree = TreeBuilder.build_tree(data, True)
 
-    #     self.assertCorrectTree(tree, [
-    #         ('e5ff570', ['feature'], [
-    #             ('e5ff570', 'Fixed a bug in the features')]),
-    #         ('e85997d', ['master', 'fixes'], [
-    #             ('e85997d', 'Fixed a third bug')]),
-    #     ])
-    #     self.assertBranchRelations(tree, {
-    #         'e85997d': ['e5ff570'],
-    #         'e5ff570': []
-    #     })
+        self.assertCorrectTree(tree, [
+            ('e5ff570', ['feature'], [
+                ('e5ff570', 'Fixed a bug in the features')]),
+            ('e85997d', ['master', 'fixes'], [
+                ('e85997d', 'Fixed a third bug')]),
+        ])
+        self.assertBranchRelations(tree, {
+            'e85997d': ['e5ff570']
+        })
 
     def test_dead_end_branches(self):
         data = self.tree_data(
@@ -455,32 +461,46 @@ class TestTreeBuilder(unittest.TestCase):
             'e85997d': ['e5ff570']
         })
 
-    # def test_merges(self):
-    #     self.git.prepare_branches(['fixes', 'master', 'feature'])
-    #     self.git.prepare_log([
-    #         '[C:6b261a7][P:541b298][R:HEAD -> fixes][M:Fixed the CLI]',
-    #         '[C:541b298][P:76094a4 0ef17ac][R:][M:Merge all]',
-    #         '[C:76094a4][P:e85997d][R:][M:Fixed the UI]',
-    #         '[C:0ef17ac][P:e5ff570][R:][M:Fixed the doc]',
-    #         '[C:e5ff570][P:e85997d][R:feature][M:Fixed the API]',
-    #         '[C:e85997d][P:c3624d3][R:master][M:Major release]'
-    #     ])
+    def test_merges(self):
+        data = self.tree_data(
+            head='6b261a7',
+            root='e85997d',
+            tree={
+                'c3624d3': ['e85997d'],
+                'e85997d': ['e5ff570', '76094a4'],
+                'e5ff570': ['0ef17ac'],
+                '76094a4': ['541b298'],
+                '0ef17ac': ['541b298'],
+                '541b298': ['6b261a7']
+            },
+            branches={
+                '6b261a7': ['fixes'],
+                'e5ff570': ['feature'],
+                'e85997d': ['master']
+            },
+            commits=self.commits({
+                '6b261a7': 'Fixed the CLI',
+                '541b298': 'Merge all',
+                '76094a4': 'Fixed the UI',
+                '0ef17ac': 'Fixed the doc',
+                'e5ff570': 'Fixed the API',
+                'e85997d': 'Major release'
+            }))
 
-    #     tree = self.git.tree(True)
+        tree = TreeBuilder.build_tree(data, True)
 
-    #     self.assertCorrectTree(tree, [
-    #         ('6b261a7', ['fixes'], [
-    #             ('6b261a7', 'Fixed the CLI'),
-    #             ('541b298', 'Merge all'),
-    #             ('76094a4', 'Fixed the UI'),
-    #             ('0ef17ac', 'Fixed the doc')]),
-    #         ('e5ff570', ['feature'], [
-    #             ('e5ff570', 'Fixed the API')]),
-    #         ('e85997d', ['master'], [
-    #             ('e85997d', 'Major release')]),
-    #     ])
-    #     self.assertBranchRelations(tree, {
-    #         'e85997d': ['e5ff570', '6b261a7'],
-    #         'e5ff570': ['6b261a7'],
-    #         '6b261a7': []
-    #     })
+        self.assertCorrectTree(tree, [
+            ('6b261a7', ['fixes'], [
+                ('6b261a7', 'Fixed the CLI'),
+                ('541b298', 'Merge all'),
+                ('0ef17ac', 'Fixed the doc'),
+                ('76094a4', 'Fixed the UI')]),
+            ('e5ff570', ['feature'], [
+                ('e5ff570', 'Fixed the API')]),
+            ('e85997d', ['master'], [
+                ('e85997d', 'Major release')]),
+        ])
+        self.assertBranchRelations(tree, {
+            'e85997d': ['e5ff570', '6b261a7'],
+            'e5ff570': ['6b261a7']
+        })

@@ -21,6 +21,7 @@ class Stage:
 class Branch:
     def __init__(self, ref, names, commits):
         self._ref = ref
+        self._names = names
         self._id = self._select_id(names)
         self._aliases = self._select_aliases(names)
         self._aliases.discard(self._id)
@@ -62,15 +63,20 @@ class Branch:
 
     @property
     def ref(self):
-        # Use ID instead
         return self._ref
 
     @property
+    def names(self):
+        return self._names
+
+    @property
     def id(self):
+        # Deprecated
         return self._id
 
     @property
     def aliases(self):
+        # Deprecated
         return self._aliases
 
     @property

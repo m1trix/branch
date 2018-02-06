@@ -93,7 +93,7 @@ class Git:
         with self._log() as log:
             data = reader.read(self._branches(), log)
         tree = TreeBuilder.build_tree(data, include_commits)
-        tree.active.stage = self._build_stage()
+        tree.head.stage = self._build_stage()
         return tree
 
     def _log(self):
