@@ -103,12 +103,18 @@ class Git:
         )
 
     def _branches(self):
-        return (
+        branches = [
             branch.replace('*', '').strip()
             for branch
             in self._call('git', 'branch').split('\n')
             if branch != ''
-        )
+        ]
+
+        for i, branch in enumerate(branches):
+            if '(HEAD ' in branch:
+                branches[i] = 'HEAD'
+
+        return branches
 
     def _build_stage(self):
         output = self.status()
@@ -116,7 +122,6 @@ class Git:
         unstaged = False
         untracked = False
         for row in output:
-            print(row)
             if row.strip() == '' or row.startswith('##'):
                 continue
             if row.startswith('??'):
@@ -148,7 +153,7 @@ class LogEntry:
         parents = LogEntry._build_parents(matcher.group(2))
         branches = LogEntry._build_branches(matcher.group(3))
         message = matcher.group(4)
-        is_head = LogEntry.HEAD_MARKER in matcher.group(3)
+        is_head = 'HEAD' in branches or LogEntry.HEAD_MARKER in matcher.group(3)
         return LogEntry(commit, parents, branches, message, is_head)
 
     def _build_parents(parents):
@@ -269,6 +274,7 @@ class TreeBuilder:
         branches = TreeBuilder(
             data, should_include_commits
         )._build_branches(data.root, None, {})
+
         branches[data.head].is_active = True
         return Tree(branches, data.root)
 
