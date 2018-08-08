@@ -4,7 +4,6 @@ from .controller import Command
 from .controller import FlagOption
 from .controller import Option
 from .display import Message
-from .tree import TreeBuilder
 from .renderer import TreeRenderer
 
 
@@ -26,18 +25,17 @@ class Engine:
     def run(self):
         try:
             command, options = self._controller.select(self._build_commands())
-            tree = self._detect_tree()
+            tree = self._detect_tree(options.get('commits', False))
             if command is None:
                 render_commits = options.get('commits', False)
-                self._display.render(
-                    TreeRenderer().render_tree(tree, render_commits))
+                self._display.render(TreeRenderer().render_tree(tree))
                 return
 
             if command == 'pull':
                 self._display.render(TreeRenderer().render_tree(tree))
                 self._pull_remotes(tree)
                 if options.get('wipe', False):
-                    tree = self._detect_tree()
+                    tree = self._detect_tree(options.get('commits', False))
                     self._wipe(tree)
                 return
 
@@ -48,8 +46,8 @@ class Engine:
         except(KeyboardInterrupt):
             return
 
-    def _detect_tree(self):
-        return TreeBuilder(self._git).build()
+    def _detect_tree(self, include_commits):
+        return self._git.tree(include_commits)
 
     def _pull_remotes(self, tree):
         self._display.message('Checking out to {}', tree.root.id)
@@ -71,7 +69,7 @@ class Engine:
 
     def _wipe(self, tree):
         self._display.message('Collecting alias branches ...')
-        active = tree.active
+        head = tree.head
 
         for branch in tree.branches:
             aliases = branch.aliases
@@ -83,7 +81,7 @@ class Engine:
             self._git.delete_branches(aliases)
 
         self._display.message('Success.')
-        self._git.checkout(active.id)
+        self._git.checkout(head.id)
 
     def _build_commands(self):
         return [
