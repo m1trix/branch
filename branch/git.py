@@ -119,7 +119,6 @@ class Git:
         unstaged = False
         untracked = False
         for row in output:
-            print(row)
             if row.strip() == '' or row.startswith('##'):
                 continue
             if row.startswith('??'):
@@ -270,8 +269,7 @@ class TreeBuilder:
         branches = TreeBuilder(
             data, should_include_commits
         )._build_branches(data.root, None, {})
-        branches[data.head].is_active = True
-        return Tree(branches, data.root)
+        return Tree(data.head, data.root, branches)
 
     def __init__(self, data, should_include_commits):
         self._data = data

@@ -4,15 +4,16 @@ from .branch import Branch
 from .commit import Commit
 
 class Tree:
-    def __init__(self, branches, root='master'):
+    def __init__(self, head, root, branches):
         self._branches = branches
-        self._head = self._find_head(branches.values())
-        self._root = branches[root]
+        self._head = self._find(head, branches.values())
+        self._root = self._find(root, branches.values())
 
-    def _find_head(self, branches):
+    def _find(self, ref, branches):
         for branch in branches:
-            if branch.is_active:
+            if branch.ref == ref:
                 return branch
+        return None
 
     def __getitem__(self, name):
         return self._branches[name]
