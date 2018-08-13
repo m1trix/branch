@@ -91,7 +91,7 @@ class Git:
     def tree(self, include_commits):
         reader = TreeReader(include_commits)
         with self._log() as log:
-            data = reader.read(self._branches(), log)
+            data = reader.read(self._head(), self._branches(), log)
         tree = TreeBuilder.build_tree(data, include_commits)
         tree.head.stage = self._build_stage()
         return tree
@@ -107,8 +107,11 @@ class Git:
             branch.replace('*', '').strip()
             for branch
             in self._call('git', 'branch').split('\n')
-            if branch != ''
+            if branch != '' and '(HEAD detached ' not in branch
         )
+
+    def _head(self):
+        return self._call('git', 'log', '-1', '--pretty=%H').strip()
 
     def _build_stage(self):
         output = self.status()
@@ -116,7 +119,6 @@ class Git:
         unstaged = False
         untracked = False
         for row in output:
-            print(row)
             if row.strip() == '' or row.startswith('##'):
                 continue
             if row.startswith('??'):
@@ -148,8 +150,7 @@ class LogEntry:
         parents = LogEntry._build_parents(matcher.group(2))
         branches = LogEntry._build_branches(matcher.group(3))
         message = matcher.group(4)
-        is_head = LogEntry.HEAD_MARKER in matcher.group(3)
-        return LogEntry(commit, parents, branches, message, is_head)
+        return LogEntry(commit, parents, branches, message)
 
     def _build_parents(parents):
         return parents.split(' ') if parents != '' else []
@@ -158,12 +159,11 @@ class LogEntry:
         refs = refs.replace(LogEntry.HEAD_MARKER, '').split(', ')
         return set(ref for ref in refs if ref != '' and 'tag:' not in ref)
 
-    def __init__(self, commit, parents, branches, message, is_head):
+    def __init__(self, commit, parents, branches, message):
         self._commit = commit
         self._parents = parents
         self._branches = branches
         self._message = message
-        self._is_head = is_head
 
     @property
     def commit(self):
@@ -180,10 +180,6 @@ class LogEntry:
     @property
     def message(self):
         return self._message
-
-    @property
-    def is_head(self):
-        return self._is_head
 
     def to_commit(self):
         return Commit(self._commit, self._message)
@@ -222,29 +218,33 @@ class TreeReader:
     def __init__(self, _should_include_commits):
         self._should_include_commits = _should_include_commits
 
-    def read(self, branches, log):
+    def read(self, head, branches, log):
         unvisited_branches = set(branches)
-        tree, refs, commits, head, root = {}, {}, {}, None, None
+        tree, refs, commits, root = {}, {}, {}, None
+        is_head_found = False
         for entry in log:
+            if entry.commit == head:
+                is_head_found = True
+
             for parent in entry.parents:
                 tree[parent] = tree.get(parent, []) + [entry.commit]
 
             if self._should_include_commits:
                 commits[entry.commit] = entry.to_commit()
 
-            if entry.is_head:
-                head = entry.commit
-
             branches = [
                 branch
                 for branch
                 in entry.branches
-                if branch in unvisited_branches]
+                if branch in unvisited_branches
+            ]
+
             if len(branches) > 0:
                 unvisited_branches.difference_update(set(branches))
                 refs[entry.commit] = branches
 
-            if len(unvisited_branches) is 0 \
+            if is_head_found \
+                    and len(unvisited_branches) is 0 \
                     and self._is_root(entry.commit, refs, tree):
                 root = entry.commit
                 break
@@ -269,8 +269,7 @@ class TreeBuilder:
         branches = TreeBuilder(
             data, should_include_commits
         )._build_branches(data.root, None, {})
-        branches[data.head].is_active = True
-        return Tree(branches, data.root)
+        return Tree(data.head, data.root, branches)
 
     def __init__(self, data, should_include_commits):
         self._data = data
@@ -305,6 +304,9 @@ class TreeBuilder:
             commit = children[0] if len(children) > 0 else None
 
     def _is_branch_point(self, commit):
+        if commit == self._data.head:
+            return True
+
         children = self._data.children(commit)
         return commit in self._data.branches or len(children) > 1
 

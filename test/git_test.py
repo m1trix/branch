@@ -9,53 +9,48 @@ from branch.git import TreeReader
 
 class LogEntryTest(unittest.TestCase):
 
-    def assertEntry(self, entry, commit, parents, branches, message, is_head):
+    def assertEntry(self, entry, commit, parents, branches, message):
         self.assertEqual(entry.commit, commit)
         self.assertEqual(entry.parents, parents)
         self.assertEqual(entry.branches, set(branches))
         self.assertEqual(entry.message, message)
-        self.assertEqual(entry.is_head, is_head)
 
     def test_with_no_parents_and_no_refs(self):
         entry = LogEntry.from_string(
             '[C:a85b5b2][P:][R:][M:That is the message]')
-        self.assertEntry(
-            entry, 'a85b5b2', [], [], 'That is the message', False)
+        self.assertEntry(entry, 'a85b5b2', [], [], 'That is the message')
 
     def test_with_single_parent(self):
         entry = LogEntry.from_string('[C:a85b5b2][P:9abcb6b][R:][M:message]')
-        self.assertEntry(entry, 'a85b5b2', ['9abcb6b'], [], 'message', False)
+        self.assertEntry(entry, 'a85b5b2', ['9abcb6b'], [], 'message')
 
     def test_with_multiple_parents(self):
         entry = LogEntry.from_string(
             '[C:a85b5b2][P:9abcb6b 27d6e22][R:][M:message]')
-        self.assertEntry(
-            entry, 'a85b5b2', ['9abcb6b', '27d6e22'], [], 'message', False)
+        self.assertEntry(entry, 'a85b5b2', ['9abcb6b', '27d6e22'], [], 'message')
 
     def test_with_single_branch_ref(self):
         entry = LogEntry.from_string(
             '[C:a85b5b2][P:9abcb6b][R:master][M:message]')
-        self.assertEntry(
-            entry, 'a85b5b2', ['9abcb6b'], ['master'], 'message', False)
+        self.assertEntry(entry, 'a85b5b2', ['9abcb6b'], ['master'], 'message')
 
     def test_with_mutliple_branch_refs(self):
         entry = LogEntry.from_string(
             '[C:a85b5b2][P:9abcb6b][R:master, branch1][M:message]')
-        self.assertEntry(entry, 'a85b5b2', ['9abcb6b'], ['master', 'branch1'],
-                         'message', False)
+        self.assertEntry(
+            entry, 'a85b5b2', ['9abcb6b'], ['master', 'branch1'], 'message')
 
     def test_with_branches_and_tags(self):
         entry = LogEntry.from_string(
             '[C:a85b5b2][P:9abcb6b][R:master, tag: v1][M:message]')
-        self.assertEntry(
-            entry, 'a85b5b2', ['9abcb6b'], ['master'], 'message', False)
+        self.assertEntry(entry, 'a85b5b2', ['9abcb6b'], ['master'], 'message')
 
     def test_with_head(self):
         entry = LogEntry.from_string(
             '[C:a85b5b2][P:9abcb6b]' +
             '[R:branch1, HEAD -> master, tag: v1][M:message]')
-        self.assertEntry(entry, 'a85b5b2', ['9abcb6b'], ['master', 'branch1'],
-                         'message', True)
+        self.assertEntry(
+            entry, 'a85b5b2', ['9abcb6b'], ['master', 'branch1'], 'message')
 
 
 class TestTreeReader(unittest.TestCase):
@@ -69,13 +64,12 @@ class TestTreeReader(unittest.TestCase):
         for key in tree.keys():
             self.assertEqual(set(data._tree[key]), set(tree[key]))
 
-    def log_entry(self, hash, parents, message, head=False, branches=[]):
-        return LogEntry(hash, parents, branches[:], message, head)
+    def log_entry(self, hash, parents, message, branches=[]):
+        return LogEntry(hash, parents, branches[:], message)
 
     def test_single_branch_and_single_commit(self):
-        data = TreeReader(False).read(['master'], [
-            self.log_entry('210d73e', [], 'Commit message',
-                           branches=['master'], head=True)
+        data = TreeReader(False).read('210d73e', ['master'], [
+            self.log_entry('210d73e', [], 'Commit message', branches=['master'])
         ])
 
         self.assertTreeData(
@@ -88,10 +82,10 @@ class TestTreeReader(unittest.TestCase):
             tree={})
 
     def test_multple_branches_with_multiple_commits(self):
-        data = TreeReader(False).read(['fixes', 'master', 'feature'], [
+        data = TreeReader(False).read('d43991b', ['fixes', 'master', 'feature'], [
             self.log_entry(
                 'd43991b', ['e5b122a'], 'Fixed a third bug',
-                branches=['fixes'], head=True),
+                branches=['fixes']),
             self.log_entry(
                 'e5b122a', ['7a1113e'], 'Fixed another bug'),
             self.log_entry(
@@ -126,12 +120,12 @@ class TestTreeReader(unittest.TestCase):
             })
 
     def test_unnamed_branch_points(self):
-        data = TreeReader(False).read(['fixes', 'master', 'feature'], [
+        data = TreeReader(False).read('b7c3625', ['fixes', 'master', 'feature'], [
             self.log_entry('de5005c', ['9d98707'], 'Fixed a third bug',
                            branches=['fixes']),
             self.log_entry('9d98707', ['e6770b0'], 'Fixed another bug'),
             self.log_entry('b7c3625', ['b299199'], 'Major release',
-                           branches=['master'], head=True),
+                           branches=['master']),
             self.log_entry('18dcc52', ['e6770b0'], 'Fixed a bug in feature A',
                            branches=['feature']),
             self.log_entry('7f55dee', ['b299199'], 'Added new features'),
@@ -157,9 +151,9 @@ class TestTreeReader(unittest.TestCase):
             })
 
     def test_multiname_branches(self):
-        data = TreeReader(False).read(['fixes', 'master', 'feature'], [
+        data = TreeReader(False).read('e5ff570', ['fixes', 'master', 'feature'], [
             self.log_entry('e5ff570', ['e85997d'], 'Fixed a bug in feature A',
-                           branches=['feature'], head=True),
+                           branches=['feature']),
             self.log_entry('e85997d', ['c3624d3'], 'Fixed a third bug',
                            branches=['master', 'fixes'])
         ])
@@ -178,13 +172,13 @@ class TestTreeReader(unittest.TestCase):
             })
 
     def test_remote_branches(self):
-        data = TreeReader(False).read(['fixes', 'master', 'feature'], [
+        data = TreeReader(False).read('e85997d', ['fixes', 'master', 'feature'], [
             self.log_entry('e5ff570', ['e85997d'], 'Fixed a bug in feature A',
                            branches=['feature']),
             self.log_entry('e4f444b', ['e85997d'], 'Fixed a third bug',
                            branches=['origin/release2.2']),
             self.log_entry('e85997d', ['c3624d3'], 'Fixed a bug',
-                           branches=['master', 'fixes'], head=True),
+                           branches=['master', 'fixes']),
             self.log_entry('c3624d3', ['032b925'], 'Fixed another bug',
                            branches=['origin/master'])
         ])
@@ -203,9 +197,9 @@ class TestTreeReader(unittest.TestCase):
             })
 
     def test_merges(self):
-        data = TreeReader(False).read(['fixes', 'master', 'feature'], [
+        data = TreeReader(False).read('6b261a7', ['fixes', 'master', 'feature'], [
             self.log_entry('6b261a7', ['541b298'], 'Fixed the CLI',
-                           branches=['fixes'], head=True),
+                           branches=['fixes']),
             self.log_entry('541b298', ['76094a4', '0ef17ac'], 'Merge all'),
             self.log_entry('76094a4', ['e85997d'], 'Fixed the UI'),
             self.log_entry('0ef17ac', ['e5ff570'], 'Fixed the doc'),
@@ -233,10 +227,75 @@ class TestTreeReader(unittest.TestCase):
                 '541b298': ['6b261a7']
             })
 
+    def test_detached_head_above_master(self):
+        data = TreeReader(False).read('541b298', ['master', 'branch'], [
+            self.log_entry('6b261a7', ['541b298'], 'Fixed the CLI', branches=['branch']),
+            self.log_entry('541b298', ['e85997d'], 'Fixed the API'),
+            self.log_entry('e85997d', ['c3624d3'], 'Major release', branches=['master'])
+        ])
+
+        self.assertTreeData(
+            data=data,
+            branches={
+                '6b261a7': ['branch'],
+                'e85997d': ['master']
+            },
+            head='541b298',
+            root='e85997d',
+            tree={
+                'c3624d3': ['e85997d'],
+                'e85997d': ['541b298'],
+                '541b298': ['6b261a7']
+            })
+
+    def test_detached_head_below_master(self):
+        data = TreeReader(False).read('e85997d', ['master', 'branch'], [
+            self.log_entry('6b261a7', ['541b298'], 'Fixed the CLI', branches=['branch']),
+            self.log_entry('541b298', ['e85997d'], 'Fixed the API', branches=['master']),
+            self.log_entry('e85997d', ['c3624d3'], 'Major release')
+        ])
+
+        self.assertTreeData(
+            data=data,
+            branches={
+                '6b261a7': ['branch'],
+                '541b298': ['master']
+            },
+            head='e85997d',
+            root='e85997d',
+            tree={
+                'c3624d3': ['e85997d'],
+                'e85997d': ['541b298'],
+                '541b298': ['6b261a7']
+            })
+
+    def test_ambiguous_head(self):
+        data = TreeReader(False).read('541b298', ['master', 'HEAD'], [
+            self.log_entry('6b261a7', ['541b298'], 'Fixed the CLI', branches=['HEAD']),
+            self.log_entry('541b298', ['e85997d'], 'Fixed the API'),
+            self.log_entry('e85997d', ['c3624d3'], 'Major release', branches=['master'])
+        ])
+
+        self.assertTreeData(
+            data=data,
+            branches={
+                '6b261a7': ['HEAD'],
+                'e85997d': ['master']
+            },
+            head='541b298',
+            root='e85997d',
+            tree={
+                'c3624d3': ['e85997d'],
+                'e85997d': ['541b298'],
+                '541b298': ['6b261a7']
+            })
+
 
 class TestTreeBuilder(unittest.TestCase):
 
-    def assertCorrectTree(self, tree, matchers):
+    def assertCorrectTree(self, tree, head, root, matchers):
+        self.assertEqual(tree.head.ref, head)
+        self.assertEqual(tree.root.ref, root)
         self.assertNumberOfBranches(tree, len(matchers))
         for matcher in matchers:
             branch = matcher[0]
@@ -304,7 +363,7 @@ class TestTreeBuilder(unittest.TestCase):
 
         tree = TreeBuilder.build_tree(data, True)
 
-        self.assertCorrectTree(tree, [
+        self.assertCorrectTree(tree, '210d73e', '210d73e', [
             ('210d73e', ['master'], [
                 ('210d73e', 'Commit message')
             ])
@@ -338,7 +397,7 @@ class TestTreeBuilder(unittest.TestCase):
 
         tree = TreeBuilder.build_tree(data, True)
 
-        self.assertCorrectTree(tree, [
+        self.assertCorrectTree(tree, 'd43991b', 'b299199', [
             ('b299199', ['master'], [
                 ('b299199', 'Some message')]),
             ('d43991b', ['fixes'], [
@@ -381,7 +440,7 @@ class TestTreeBuilder(unittest.TestCase):
 
         tree = TreeBuilder.build_tree(data, True)
 
-        self.assertCorrectTree(tree, [
+        self.assertCorrectTree(tree, 'b7c3625', 'b299199', [
             ('de5005c', ['fixes'], [
                 ('de5005c', 'Fixed a third bug'),
                 ('9d98707', 'Fixed another bug')]),
@@ -419,7 +478,7 @@ class TestTreeBuilder(unittest.TestCase):
 
         tree = TreeBuilder.build_tree(data, True)
 
-        self.assertCorrectTree(tree, [
+        self.assertCorrectTree(tree, 'e5ff570', 'e85997d', [
             ('e5ff570', ['feature'], [
                 ('e5ff570', 'Fixed a bug in the features')]),
             ('e85997d', ['master', 'fixes'], [
@@ -451,7 +510,7 @@ class TestTreeBuilder(unittest.TestCase):
 
         tree = TreeBuilder.build_tree(data, True)
 
-        self.assertCorrectTree(tree, [
+        self.assertCorrectTree(tree, 'e85997d', 'e85997d', [
             ('e5ff570', ['feature'], [
                 ('e5ff570', 'Fixed a bug in a feature')]),
             ('e85997d', ['master', 'fixes'], [
@@ -489,7 +548,7 @@ class TestTreeBuilder(unittest.TestCase):
 
         tree = TreeBuilder.build_tree(data, True)
 
-        self.assertCorrectTree(tree, [
+        self.assertCorrectTree(tree, '6b261a7', 'e85997d', [
             ('6b261a7', ['fixes'], [
                 ('6b261a7', 'Fixed the CLI'),
                 ('541b298', 'Merge all'),
@@ -502,5 +561,95 @@ class TestTreeBuilder(unittest.TestCase):
         ])
         self.assertBranchRelations(tree, {
             'e85997d': ['e5ff570', '6b261a7'],
+            'e5ff570': ['6b261a7']
+        })
+
+    def test_detached_head_above_master(self):
+        data = self.tree_data(
+            head='e5ff570',
+            root='e85997d',
+            tree={
+                'e85997d': ['e5ff570'],
+                'e5ff570': ['6b261a7']
+            },
+            branches={
+                '6b261a7': ['fixes'],
+                'e85997d': ['master']
+            },
+            commits=self.commits({
+                '6b261a7': 'Fixed the CLI',
+                'e5ff570': 'Fixed the API',
+                'e85997d': 'Major release'
+            }))
+
+        tree = TreeBuilder.build_tree(data, True)
+
+        self.assertCorrectTree(tree, 'e5ff570', 'e85997d', [
+            ('6b261a7', ['fixes'], [('6b261a7', 'Fixed the CLI')]),
+            ('e5ff570', [], [('e5ff570', 'Fixed the API')]),
+            ('e85997d', ['master'], [('e85997d', 'Major release')])
+        ])
+        self.assertBranchRelations(tree, {
+            'e85997d': ['e5ff570'],
+            'e5ff570': ['6b261a7']
+        })
+
+    def test_detached_head_below_master(self):
+        data = self.tree_data(
+            head='e85997d',
+            root='e85997d',
+            tree={
+                'e85997d': ['e5ff570'],
+                'e5ff570': ['6b261a7']
+            },
+            branches={
+                '6b261a7': ['fixes'],
+                'e5ff570': ['master']
+            },
+            commits=self.commits({
+                '6b261a7': 'Fixed the CLI',
+                'e5ff570': 'Fixed the API',
+                'e85997d': 'Major release'
+            }))
+
+        tree = TreeBuilder.build_tree(data, True)
+
+        self.assertCorrectTree(tree, 'e85997d', 'e85997d', [
+            ('6b261a7', ['fixes'], [('6b261a7', 'Fixed the CLI')]),
+            ('e5ff570', ['master'], [('e5ff570', 'Fixed the API')]),
+            ('e85997d', [], [('e85997d', 'Major release')])
+        ])
+        self.assertBranchRelations(tree, {
+            'e85997d': ['e5ff570'],
+            'e5ff570': ['6b261a7']
+        })
+
+    def test_ambiguous_head(self):
+        data = self.tree_data(
+            head='e5ff570',
+            root='e85997d',
+            tree={
+                'e85997d': ['e5ff570'],
+                'e5ff570': ['6b261a7']
+            },
+            branches={
+                '6b261a7': ['HEAD'],
+                'e85997d': ['master']
+            },
+            commits=self.commits({
+                '6b261a7': 'Fixed the CLI',
+                'e5ff570': 'Fixed the API',
+                'e85997d': 'Major release'
+            }))
+
+        tree = TreeBuilder.build_tree(data, True)
+
+        self.assertCorrectTree(tree, 'e5ff570', 'e85997d', [
+            ('6b261a7', ['HEAD'], [('6b261a7', 'Fixed the CLI')]),
+            ('e5ff570', [], [('e5ff570', 'Fixed the API')]),
+            ('e85997d', ['master'], [('e85997d', 'Major release')])
+        ])
+        self.assertBranchRelations(tree, {
+            'e85997d': ['e5ff570'],
             'e5ff570': ['6b261a7']
         })
