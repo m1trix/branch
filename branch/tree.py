@@ -3,11 +3,13 @@ import re
 from .branch import Branch
 from .commit import Commit
 
+
 class Tree:
     def __init__(self, head, root, branches):
         self._branches = branches
         self._head = self._find(head, branches.values())
         self._root = self._find(root, branches.values())
+        self._head.is_active = True
 
     def _find(self, ref, branches):
         for branch in branches:
