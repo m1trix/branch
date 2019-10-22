@@ -1,13 +1,10 @@
 import unittest
 from branch.commit import Commit
 from branch.git import Git
-from branch.git import LogEntry
-from branch.git import TreeBuilder
-from branch.git import TreeData
-from branch.git import TreeReader
+from branch.git import TreeNode
 
 
-class LogEntryTest(unittest.TestCase):
+class TreeNodeTest(unittest.TestCase):
 
     def assertEntry(self, entry, commit, parents, branches, message):
         self.assertEqual(entry.commit, commit)
@@ -16,37 +13,37 @@ class LogEntryTest(unittest.TestCase):
         self.assertEqual(entry.message, message)
 
     def test_with_no_parents_and_no_refs(self):
-        entry = LogEntry.from_string(
+        entry = TreeNode.from_string(
             '[C:a85b5b2][P:][R:][M:That is the message]')
         self.assertEntry(entry, 'a85b5b2', [], [], 'That is the message')
 
     def test_with_single_parent(self):
-        entry = LogEntry.from_string('[C:a85b5b2][P:9abcb6b][R:][M:message]')
+        entry = TreeNode.from_string('[C:a85b5b2][P:9abcb6b][R:][M:message]')
         self.assertEntry(entry, 'a85b5b2', ['9abcb6b'], [], 'message')
 
     def test_with_multiple_parents(self):
-        entry = LogEntry.from_string(
+        entry = TreeNode.from_string(
             '[C:a85b5b2][P:9abcb6b 27d6e22][R:][M:message]')
         self.assertEntry(entry, 'a85b5b2', ['9abcb6b', '27d6e22'], [], 'message')
 
     def test_with_single_branch_ref(self):
-        entry = LogEntry.from_string(
+        entry = TreeNode.from_string(
             '[C:a85b5b2][P:9abcb6b][R:master][M:message]')
         self.assertEntry(entry, 'a85b5b2', ['9abcb6b'], ['master'], 'message')
 
     def test_with_mutliple_branch_refs(self):
-        entry = LogEntry.from_string(
+        entry = TreeNode.from_string(
             '[C:a85b5b2][P:9abcb6b][R:master, branch1][M:message]')
         self.assertEntry(
             entry, 'a85b5b2', ['9abcb6b'], ['master', 'branch1'], 'message')
 
     def test_with_branches_and_tags(self):
-        entry = LogEntry.from_string(
+        entry = TreeNode.from_string(
             '[C:a85b5b2][P:9abcb6b][R:master, tag: v1][M:message]')
         self.assertEntry(entry, 'a85b5b2', ['9abcb6b'], ['master'], 'message')
 
     def test_with_head(self):
-        entry = LogEntry.from_string(
+        entry = TreeNode.from_string(
             '[C:a85b5b2][P:9abcb6b]' +
             '[R:branch1, HEAD -> master, tag: v1][M:message]')
         self.assertEntry(
@@ -65,7 +62,7 @@ class TestTreeReader(unittest.TestCase):
             self.assertEqual(set(data._tree[key]), set(tree[key]))
 
     def log_entry(self, hash, parents, message, branches=[]):
-        return LogEntry(hash, parents, branches[:], message)
+        return TreeNode(hash, parents, branches[:], message)
 
     def test_single_branch_and_single_commit(self):
         data = TreeReader(False).read('210d73e', ['master'], [
