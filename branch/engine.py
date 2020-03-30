@@ -6,7 +6,6 @@ from .controller import Option
 from .display import Message
 from .renderer import TreeRenderer
 
-
 PROGRAM_HELP = 'Used to view and manage local git branches.'
 PULL_COMMAND_HELP = 'Pulls all remote branches and rebases local ones over' + \
     ' their respective parrents.'
@@ -27,7 +26,6 @@ class Engine:
             command, options = self._controller.select(self._build_commands())
             tree = self._detect_tree(options.get('commits', False))
             if command is None:
-                render_commits = options.get('commits', False)
                 self._display.render(TreeRenderer().render_tree(tree))
                 return
 

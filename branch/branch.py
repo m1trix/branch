@@ -21,39 +21,16 @@ class Stage:
 class Branch:
     def __init__(self, ref, names, commits):
         self._ref = ref
-        self._names = names
-        self._id = self._select_id(names)
-        self._aliases = self._select_aliases(names)
-        self._aliases.discard(self._id)
+        self._names = self._select_names(names)
         self._children = {}
         self._commits = commits
         self._is_remote = self._has_remotes(names)
         self._is_active = False
         self._stage = None
 
-    def _select_id(self, names):
-        if len(names) == 0:
-            return ''
-
-        if 'master' in names:
-            return 'master'
-
-        for name in names:
-            if not name.startswith('origin/'):
-                return name
-
-        return names[0]
-
-    def _select_aliases(self, names):
-        result = set()
-        for name in names:
-            if not name.startswith('origin/'):
-                result.add(name)
-
-        if len(result) == 0:
-            result = names
-
-        return set(result)
+    def _select_names(self, names):
+        result = [name for name in names if not name.startswith('origin/')]
+        return result or names
 
     def _has_remotes(self, names):
         for name in names:
@@ -69,15 +46,9 @@ class Branch:
     def names(self):
         return self._names
 
-    @property
-    def id(self):
-        # Deprecated
-        return self._id
-
-    @property
-    def aliases(self):
-        # Deprecated
-        return self._aliases
+    @names.setter
+    def names(self, names):
+        self._names = names
 
     @property
     def is_remote(self):
@@ -110,3 +81,14 @@ class Branch:
     @stage.setter
     def stage(self, stage):
         self._stage = stage
+
+    @property
+    def id(self):
+        return self._names[0] if self._names else ''
+    
+    @property
+    def aliases(self):
+        return self._names[1:]
+    
+    def __repr__(self):
+        return self._names[0] if self._names else '<?>'
